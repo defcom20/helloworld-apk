@@ -1,0 +1,7 @@
+✨ Initial release of the "Hello World" base template.
+
+This version includes:
+- Base AndroidManifest setup.
+- Full theme and color definitions.
+- Complete Adaptive Icon support and PNG fallbacks.
+- Ready for automated builds (CI/CD).

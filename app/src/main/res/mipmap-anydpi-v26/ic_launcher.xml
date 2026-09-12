@@ -1,0 +1,7 @@
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- The background layer that will show through the mask. -->
+  <background android:drawable="@drawable/ic_launcher_background"/>
+    
+  <!-- The foreground layer, usually the main graphic or logo. -->
+  <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>

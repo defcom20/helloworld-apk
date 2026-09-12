@@ -1,0 +1,5 @@
+A clean, base template for Android development in Kotlin. Start coding now!
+You can make your own apps using this code!
+
+
+

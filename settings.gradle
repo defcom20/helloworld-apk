@@ -1,0 +1,19 @@
+pluginManagement {
+  repositories {
+    // Essential: This is where the Android Gradle Plugin (com.android.application) is hosted.
+    google() 
+      // Essential: Standard repository for other dependencies and plugins.
+      mavenCentral() 
+      // For Jetpack/AndroidX libraries
+      gradlePluginPortal()
+  }
+}
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+      google()
+        mavenCentral()
+    }
+}
+rootProject.name = "KotlinApkTemplate"
+include ':app'

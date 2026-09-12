@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+
+# Push changes to github
+
+echo "🐾 Pushing to GitHub"
+
+if [ -z "$1" ]; then
+    echo "Usage: ./utils-compile-apk 'Short description of app changes'"
+    exit 1
+fi
+
+echo "📦 Pushing changes ..."
+git add .
+git commit -m "$1"
+git push
+
+echo "🔨 Build starting: https://github.com/your_username/your_repo/actions"

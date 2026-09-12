@@ -96,6 +96,8 @@ class MainActivity : AppCompatActivity() {
     private fun configurarWebView() {
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
+        webView.settings.javaScriptCanOpenWindowsAutomatically = true
+        webView.settings.setSupportMultipleWindows(true)
         webView.addJavascriptInterface(PuenteJS(), "AndroidBridge")
 
         webView.webViewClient = object : WebViewClient() {
@@ -108,9 +110,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Red de seguridad por si el sitio también disparara un alert()
-        // nativo en algún punto: lo cierra para no bloquear la app.
         webView.webChromeClient = object : WebChromeClient() {
+            // Red de seguridad por si el sitio también disparara un alert()
+            // nativo en algún punto: lo cierra para no bloquear la app.
             override fun onJsAlert(
                 view: WebView?,
                 url: String?,
@@ -118,6 +120,34 @@ class MainActivity : AppCompatActivity() {
                 result: JsResult?
             ): Boolean {
                 result?.confirm()
+                return true
+            }
+
+            // El botón #alertConfirm abre una pestaña nueva (window.open) con
+            // contenido que no interesa. En vez de dejarla aparecer y volver
+            // atrás manualmente, se le da una WebView descartable, se la deja
+            // cargar UNA vez y se destruye enseguida: nunca se llega a ver,
+            // y esta WebView principal se queda tranquila en la página actual.
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: android.os.Message?
+            ): Boolean {
+                val popup = WebView(this@MainActivity)
+                popup.webViewClient = object : WebViewClient() {
+                    override fun onPageStarted(
+                        view: WebView?,
+                        url: String?,
+                        favicon: android.graphics.Bitmap?
+                    ) {
+                        popup.stopLoading()
+                        popup.destroy()
+                    }
+                }
+                val transport = resultMsg?.obj as? WebView.WebViewTransport
+                transport?.webView = popup
+                resultMsg?.sendToTarget()
                 return true
             }
         }
@@ -134,20 +164,39 @@ class MainActivity : AppCompatActivity() {
               function estaVisible(el) {
                 return !!el && el.offsetParent !== null;
               }
+
+              // Paso 1: aparece el modal de confirmación (.alert-box con
+              // #alertConfirm adentro) y hay que clickearlo.
+              function clickConfirmar(intentosRestantes) {
+                var boton = document.getElementById('alertConfirm');
+                if (estaVisible(boton)) {
+                  boton.click();
+                  setTimeout(function () { observarResultado(60); }, 300);
+                } else if (intentosRestantes > 0) {
+                  setTimeout(function () { clickConfirmar(intentosRestantes - 1); }, 500);
+                } else {
+                  AndroidBridge.onAlertaDetectada('__TIMEOUT__');
+                }
+              }
+
+              // Paso 2: el mismo .alert-box se reutiliza para mostrar el
+              // resultado final, distinguible porque este trae un <h3> con
+              // el texto (el de confirmación no tiene <h3>, solo el botón).
               function observarResultado(intentosRestantes) {
-                var overlay = document.getElementById('customAlert');
-                if (estaVisible(overlay)) {
-                  var h3 = overlay.querySelector('h3');
-                  AndroidBridge.onAlertaDetectada(h3 ? h3.innerText : '');
+                var overlay = document.querySelector('.alert-box');
+                var h3 = overlay ? overlay.querySelector('h3') : null;
+                if (estaVisible(overlay) && h3 && h3.innerText.trim().length > 0) {
+                  AndroidBridge.onAlertaDetectada(h3.innerText);
                 } else if (intentosRestantes > 0) {
                   setTimeout(function () { observarResultado(intentosRestantes - 1); }, 500);
                 } else {
                   AndroidBridge.onAlertaDetectada('__TIMEOUT__');
                 }
               }
+
               var boton = document.querySelector($selectorSeguro);
               if (boton) { boton.click(); }
-              observarResultado(60);
+              clickConfirmar(60);
             })();
         """.trimIndent()
     }

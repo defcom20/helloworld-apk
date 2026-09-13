@@ -2,6 +2,8 @@ package com.example.helloworld
 
 import android.content.Context
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.JsResult
@@ -15,7 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 
 /**
- * App de un solo botón:
+ * App de un solo botón: bien
  *  - Carga tu URL en un WebView (navegador embebido propio).
  *  - Al terminar de cargar, hace clic en el botón que indiques (por
  *    selector CSS) y observa el DOM esperando tu overlay de confirmación
@@ -45,6 +47,13 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun onAlertaDetectada(texto: String) {
             runOnUiThread { manejarResultado(texto) }
+        }
+
+        @JavascriptInterface
+        fun tocarWebView(x: Float, y: Float) {
+            runOnUiThread {
+                dispatchTouchWebView(x, y)
+            }
         }
     }
 
@@ -92,6 +101,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ---- WebView: carga, clic en el botón configurado, y el puente ----
+
+    /**
+     * Simula un toque táctil directamente sobre el WebView usando MotionEvent.
+     *
+     * IMPORTANTE:
+     * Las coordenadas recibidas desde JavaScript son coordenadas del viewport
+     * del WebView. Se convierten a coordenadas de la vista Android teniendo
+     * en cuenta el scroll del WebView.
+     */
+    private fun dispatchTouchWebView(viewportX: Float, viewportY: Float) {
+        val x = viewportX * webView.scale
+        val y = (viewportY * webView.scale) + webView.paddingTop
+
+        val downTime = SystemClock.uptimeMillis()
+
+        val downEvent = MotionEvent.obtain(
+            downTime,
+            downTime,
+            MotionEvent.ACTION_DOWN,
+            x,
+            y,
+            0
+        )
+
+        val upEvent = MotionEvent.obtain(
+            downTime,
+            downTime + 80L,
+            MotionEvent.ACTION_UP,
+            x,
+            y,
+            0
+        )
+
+        try {
+            webView.dispatchTouchEvent(downEvent)
+            webView.postDelayed({
+                webView.dispatchTouchEvent(upEvent)
+                upEvent.recycle()
+            }, 80L)
+        } finally {
+            downEvent.recycle()
+        }
+    }
 
     private fun configurarWebView() {
         webView.settings.javaScriptEnabled = true
@@ -170,8 +222,13 @@ class MainActivity : AppCompatActivity() {
               function clickConfirmar(intentosRestantes) {
                 var boton = document.getElementById('alertConfirm');
                 if (estaVisible(boton)) {
-                  boton.click();
-                  setTimeout(function () { observarResultado(60); }, 300);
+                  var rect = boton.getBoundingClientRect();
+                  var x = rect.left + (rect.width / 2);
+                  var y = rect.top + (rect.height / 2);
+
+                  AndroidBridge.tocarWebView(x, y);
+
+                  setTimeout(function () { observarResultado(60); }, 500);
                 } else if (intentosRestantes > 0) {
                   setTimeout(function () { clickConfirmar(intentosRestantes - 1); }, 500);
                 } else {
@@ -195,8 +252,17 @@ class MainActivity : AppCompatActivity() {
               }
 
               var boton = document.querySelector($selectorSeguro);
-              if (boton) { boton.click(); }
-              clickConfirmar(60);
+              if (boton) {
+                var rect = boton.getBoundingClientRect();
+                var x = rect.left + (rect.width / 2);
+                var y = rect.top + (rect.height / 2);
+
+                AndroidBridge.tocarWebView(x, y);
+              }
+
+              setTimeout(function () {
+                clickConfirmar(60);
+              }, 300);
             })();
         """.trimIndent()
     }
